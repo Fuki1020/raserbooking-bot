@@ -106,7 +106,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
             const dateInput = new TextInputBuilder()
                 .setCustomId("date")
-                .setLabel("使用日（YYYY/MM/DD）")
+                .setLabel("利用日")
                 .setPlaceholder("例: 2026/05/10")
                 .setStyle(TextInputStyle.Short);
 
