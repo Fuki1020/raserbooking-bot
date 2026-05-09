@@ -1,0 +1,26 @@
+{
+  "name": "raserbooking-bot",
+  "version": "1.0.0",
+  "description": "レーザー加工の申請用bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fuki1020/raserbooking-bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Fuki1020/raserbooking-bot/issues"
+  },
+  "homepage": "https://github.com/Fuki1020/raserbooking-bot#readme",
+  "dependencies": {
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}
