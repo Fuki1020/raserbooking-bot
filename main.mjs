@@ -48,44 +48,67 @@ app.listen(PORT, () => {
 });
 
 // ==============================
-// 起動時
+// 起動時（ボタンID判定・最強重複防止版）
 // ==============================
 client.once(Events.ClientReady, async () => {
-    console.log(`ログインしました: ${client.user.tag}`);
+    try {
+        console.log(`ログインしました: ${client.user.tag}`);
 
-    for (const guild of client.guilds.cache.values()) {
-        const channels = await guild.channels.fetch();
+        const guilds = client.guilds.cache;
+        let channel = null;
 
-        const channel = channels.find(
-            ch => ch?.name === "🖥️｜レーザー加工利用"
-        );
+        for (const guild of guilds.values()) {
+            const channels = await guild.channels.fetch();
 
-        if (!channel) continue;
+            channel = channels.find(
+                ch => ch?.name === "🖥️｜レーザー加工利用"
+            );
+
+            if (channel) break;
+        }
+
+        if (!channel) {
+            console.log("🖥️｜レーザー加工利用 が見つかりません");
+            return;
+        }
+
+        // テキスト送信可能か安全確認
+        if (!channel.isTextBased()) return;
 
         const button = new ButtonBuilder()
             .setCustomId("open_form")
             .setLabel("申請する")
             .setStyle(ButtonStyle.Success)
-            .setEmoji("🔧");
+            //.setEmoji("🔧");
 
         const row = new ActionRowBuilder().addComponents(button);
 
-        const messages = await channel.messages.fetch({ limit: 10 });
+        // 🔍 過去のメッセージ取得数を100件に拡張
+        const messages = await channel.messages.fetch({ limit: 100 });
 
-        const exists = messages.some(msg =>
+        // 🛠️【変更箇所】メッセージの文章ではなく、「open_form」ボタンが含まれるかを判定
+        const oldMsg = messages.find(msg =>
             msg.author.id === client.user.id &&
-            msg.content.includes("レーザー加工利用申請")
+            msg.components.some(actionRow => 
+                actionRow.components.some(comp => comp.customId === "open_form")
+            )
         );
 
-        if (!exists) {
+        if (oldMsg) {
+            // すでに存在する場合はボタン（components）の状態を最新に更新
+            await oldMsg.edit({ components: [row] });
+            console.log("🖥️ レーザー加工利用申請ボタンは既に存在するため、既存メッセージを更新しました。");
+        } else {
+            // 1件もない場合のみ新しく送信
             await channel.send({
-                content:
-                    "🔧 レーザー加工（GCC LaserPro C180Ⅱ）申請\nボタンから申請してください。",
+                content: "🔧 レーザー加工（GCC LaserPro C180Ⅱ）申請\nボタンから申請してください。",
                 components: [row]
             });
+            console.log("🖥️ レーザー加工利用申請パネルを新しく設置しました。");
         }
 
-        break;
+    } catch (err) {
+        console.error(err);
     }
 });
 
@@ -94,12 +117,10 @@ client.once(Events.ClientReady, async () => {
 // ==============================
 client.on(Events.InteractionCreate, async interaction => {
     try {
-
         // --------------------------
         // ボタン
         // --------------------------
         if (interaction.isButton() && interaction.customId === "open_form") {
-
             const modal = new ModalBuilder()
                 .setCustomId("laser_modal")
                 .setTitle("🔧 レーザー加工利用申請");
@@ -128,7 +149,6 @@ client.on(Events.InteractionCreate, async interaction => {
         // モーダル
         // --------------------------
         if (interaction.isModalSubmit() && interaction.customId === "laser_modal") {
-
             const dateStr = interaction.fields.getTextInputValue("date");
             const purpose = interaction.fields.getTextInputValue("purpose");
 
@@ -183,6 +203,10 @@ client.on(Events.InteractionCreate, async interaction => {
         // 開始時間
         // --------------------------
         if (interaction.isStringSelectMenu() && interaction.customId === "start_time") {
+            if (!client.tempData[interaction.user.id]) {
+                await interaction.reply({ content: "セッションがタイムアウトしました。最初からやり直してください。", ephemeral: true });
+                return;
+            }
 
             client.tempData[interaction.user.id].start = interaction.values[0];
 
@@ -209,13 +233,14 @@ client.on(Events.InteractionCreate, async interaction => {
         // 終了時間
         // --------------------------
         if (interaction.isStringSelectMenu() && interaction.customId === "end_time") {
-
             const data = client.tempData[interaction.user.id];
+            if (!data) return;
+
             const end = interaction.values[0];
 
             if (end <= data.start) {
                 await interaction.update({
-                    content: "終了時間は開始時間より後にしてください。",
+                    content: "❌ エラー: 終了時間は開始時間より後にしてください。ボタンから申請をやり直してください。",
                     components: []
                 });
                 delete client.tempData[interaction.user.id];
@@ -224,6 +249,14 @@ client.on(Events.InteractionCreate, async interaction => {
 
             const channels = await interaction.guild.channels.fetch();
             const channel = channels.find(ch => ch?.name === "🗓️｜利用予定");
+
+            if (!channel || !channel.isTextBased()) {
+                await interaction.update({
+                    content: "送信先チャンネル（🗓️｜利用予定）が見つかりません。",
+                    components: []
+                });
+                return;
+            }
 
             const message =
 `🔧 レーザー加工利用申請（GCC LaserPro C180Ⅱ）
@@ -242,7 +275,7 @@ ${RESERVATION_URL}`;
             delete client.tempData[interaction.user.id];
 
             await interaction.update({
-                content: "申請完了しました！",
+                content: "✅ 申請完了しました！「🗓️｜利用予定」チャンネルをご確認ください。",
                 components: []
             });
         }
