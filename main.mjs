@@ -179,18 +179,21 @@ client.on(Events.InteractionCreate, async interaction => {
             };
 
             // 時間選択（8:00〜17:00）
-            const startSelect = new StringSelectMenuBuilder()
-                .setCustomId("start_time")
-                .setPlaceholder("開始時間")
-                .addOptions(
-                    Array.from({ length: 10 }, (_, i) => {
-                        const hour = i + 8;
-                        return {
-                            label: `${hour}:00`,
-                            value: `${hour}:00`
-                        };
-                    })
-                );
+
+                const startSelect = new StringSelectMenuBuilder()
+                    .setCustomId("start_time")
+                    .setPlaceholder("開始時間")
+                    .addOptions(
+                        Array.from({ length: 10 }, (_, i) => {
+                            const hour = i + 8;
+                            // 💡 1桁の時は頭に 0 をつける (例: "09:00")
+                            const timeStr = `${String(hour).padStart(2, '0')}:00`; 
+                            return {
+                                label: timeStr,
+                                value: timeStr
+                            };
+                        })
+                    );
 
             await interaction.reply({
                 content: "開始時間を選択してください",
